@@ -5,10 +5,6 @@
 %%% @end
 %%% Created : 18 Oct 2013 by  <Dungarov@DUNGAROV-PC>
 
--module(parser).
-
-
-
 
 -module(parser).
 -compile(export_all).
