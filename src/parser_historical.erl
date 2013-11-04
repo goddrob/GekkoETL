@@ -1,32 +1,20 @@
 % Author : Dani Hodovic
 % Historical parser V2. Incomplete as it needs to be compatible with the database. 
-% For now it spawns mini-processes and recieves messages from those printing it in in the shell.
+% For now it contains a test method for spawning
+ % mini-processes and receiving messages from those printing it in in the shell.
 
 -module(parser_historical).
 -export([main/0]).
+-include("../include/defs.hrl").
+
+% For testing purposes
 -record(rec, {symbol = "", date = "", open = "0", high = "0", low = "0", close = "0", volume = "0"}).
 
 
 main() ->
-	case whereis(server) of
-		undefined -> register(server, self());
-		_ -> registered_already
-	end,
 	inets:start(),
-	print(inets_started),
 	All_Tickers = nasdaqTickers:get(),
-	{A,_} = lists:split(2, All_Tickers),
-	print(process_starting),
-	iterate_tickers(A),
-	loop().
-	
-
-loop() ->
-receive
-	M -> io:format("~p~n",[M]), loop()
-	after 3000 ->
-		timeout
-end.
+	iterate_tickers(All_Tickers).
 
 iterate_tickers([H|T]) ->
 	spawn_link(fun() -> processTicker(H) end),
@@ -50,7 +38,10 @@ processTicker(Ticker) ->
 
 parse_csv(CSV, Ticker) ->
 	[_|List] = re:split(tuple_to_list(CSV), "\n",[{return,list},{parts,infinity}]),
-	server ! {iterate_records(List, [], Ticker)}.
+	dbload:load_historical_batch(iterate_records(List, [], Ticker)).
+	
+	% For testing, ignore.
+	% server ! {iterate_records(List, [], Ticker)}.
 
 % Iterates over records and calls another function 
 % to make the actualy records for each line	
@@ -83,6 +74,24 @@ print(Var) ->
 	io:format("~p", [Var]),
 	io:format("*************~n").
 
-% {531042000, 1000 list, 1 process}
-%  32745000
-% 38417000
+	
+% Only use for local test cases without binding to the database, printing only for the following two methods.
+test() ->
+	case whereis(server) of
+		undefined -> register(server, self());
+		_ -> registered_already
+	end,
+	inets:start(),
+	print(inets_started),
+	All_Tickers = nasdaqTickers:get(),
+	{A,_} = lists:split(2, All_Tickers),
+	print(process_starting),
+	iterate_tickers(A),
+	loop().
+	
+loop() ->
+receive
+	M -> io:format("~p~n",[M]), loop()
+	after 3000 ->
+		timeout
+end.

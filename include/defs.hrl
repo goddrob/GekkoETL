@@ -9,4 +9,4 @@
  close = "0", high = "0", low = "0", volume = "0"}).
  
  % Record for the news
--record(news {date = "", ticker = "", headline = "", url = ""}).
+-record(news, {date = "", ticker = "", headline = "", url = ""}).
