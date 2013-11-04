@@ -5,7 +5,7 @@
  open = 0, high = 0, low = 0, volume = 0}).
  
  % Record for the historical stock
--record(histStock, {symbol = "", date = "", open = "0",
+-record(hist_stock, {symbol = "", date = "", open = "0",
  close = "0", high = "0", low = "0", volume = "0"}).
  
  % Record for the news

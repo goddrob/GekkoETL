@@ -8,7 +8,7 @@
 -include("../include/defs.hrl").
 
 % For testing purposes
--record(rec, {symbol = "", date = "", open = "0", high = "0", low = "0", close = "0", volume = "0"}).
+% -record(rec, {symbol = "", date = "", open = "0", high = "0", low = "0", close = "0", volume = "0"}).
 
 
 main() ->
@@ -48,23 +48,23 @@ parse_csv(CSV, Ticker) ->
 iterate_records([H|T], Acc, Ticker) ->
 	String = string:tokens(H, ","),
 	case String =/= [] of
-	 true -> iterate_records(T, [make_rec(String, 0, #rec{}, Ticker)|Acc], Ticker);
+	 true -> iterate_records(T, [make_rec(String, 0, #hist_stock{}, Ticker)|Acc], Ticker);
 	 false -> Acc
 	end;
 iterate_records([], Acc, _Ticker) -> Acc.
 
 make_rec([H|T], N, Rec, Ticker) -> 
-	make_rec(T, N + 1, Rec#rec{symbol = Ticker, date=((H -- [$-]) --[$-])}).
+	make_rec(T, N + 1, Rec#hist_stock{symbol = Ticker, date=((H -- [$-]) --[$-])}).
 make_rec([H|T], N, Rec) when N == 1 -> 
-	make_rec(T, N + 1, Rec#rec{open=H});
+	make_rec(T, N + 1, Rec#hist_stock{open=H});
 make_rec([H|T], N, Rec) when N == 2 -> 
-	make_rec(T, N + 1, Rec#rec{high=H});
+	make_rec(T, N + 1, Rec#hist_stock{high=H});
 make_rec([H|T], N, Rec) when N == 3 -> 
-	make_rec(T, N + 1, Rec#rec{low=H});
+	make_rec(T, N + 1, Rec#hist_stock{low=H});
 make_rec([H|T], N, Rec) when N == 4 -> 
-	make_rec(T, N + 1, Rec#rec{close=H});
+	make_rec(T, N + 1, Rec#hist_stock{close=H});
 make_rec([H|T], N, Rec) when N == 5 -> 
-	make_rec(T, N + 1, Rec#rec{volume=H});
+	make_rec(T, N + 1, Rec#hist_stock{volume=H});
 make_rec(_, _, Rec) ->
 	Rec.
 
