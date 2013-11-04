@@ -1,3 +1,6 @@
+% @Author : Sinan Alazzawi
+% Parser for the tickers
+
 -module(nasdaqTickers).
 -export([getServer/1,get/0,filteredValues/3,deleteSymbols/1]).
 
