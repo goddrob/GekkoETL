@@ -30,7 +30,7 @@ processTicker(Ticker) ->
 	S = "http://ichart.yahoo.com/table.csv?s="++Ticker
 		++"&a=5"++"&b=15"++"&c=2013"++"&d="++ SMonth ++ "&e="++ SDay ++ "&f="++ SYear
 			++"&d=m&ignore=.csv",
-	CSV = httpQ:get(S),
+	{CSV} = nasdaqTickers:getServer(S),
 	case (string:chr(CSV, $!) > 0) of 
 		false -> parse_csv({CSV}, Ticker);
 		true -> error
