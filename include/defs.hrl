@@ -10,3 +10,5 @@
  
  % Record for the news
 -record(news, {date = "", ticker = "", headline = "", url = ""}).
+
+-define(ConnectStr, "DSN=Gekko;UID=sa;PWD=Qwerty020390").
