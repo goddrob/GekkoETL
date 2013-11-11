@@ -28,3 +28,25 @@ AS
 				VALUES(@Name,@Symbol,@Datetime,@CurrentPrice,@ChangeValue,@ChangePercent,@PreviousClose,@Open,@Volume,@DayMinPrice,@DayMaxPrice);
 	COMMIT 
 GO
+CREATE PROCEDURE s_addHistorical
+	@Symbol nchar(10),@Date datetime,
+	@Open decimal(8,2),@Close decimal(8,2),@MinPrice decimal(8,2),
+	@MaxPrice decimal(8,2),@Volume int
+AS 
+	SET TRANSACTION ISOLATION LEVEL SERIALIZABLE
+	BEGIN TRANSACTION
+	MERGE HistoricalStock WITH (UPDLOCK) AS myTarget
+		USING (SELECT @Symbol AS Symbol,
+		@Date AS Date, @Open AS [Open], @Close AS [Close],
+		@MinPrice AS MinPrice, @MaxPrice AS MaxPrice,@Volume AS Volume) AS mySource
+		ON mySource.Symbol = myTarget.Symbol AND mySource.Date = myTarget.Date
+		WHEN MATCHED 
+			THEN UPDATE 
+				SET [Open] = mySource.[Open], [Close] = mySource.[Close],
+				MinPrice = mySource.MinPrice, MaxPrice = mySource.MaxPrice, Volume = mySource.Volume			
+		WHEN NOT MATCHED
+			THEN
+				INSERT(Symbol,Date,[Open],[Close],MinPrice,MaxPrice,Volume)
+				VALUES(@Symbol,@Date,@Open,@Close,@MinPrice,@MaxPrice,@Volume);
+	COMMIT 
+	GO
