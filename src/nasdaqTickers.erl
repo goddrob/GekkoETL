@@ -5,9 +5,7 @@
 -export([getServer/1,get/0,filteredValues/3,deleteSymbols/1]).
 
 getServer(Quary) ->
-	% inets:start(),
 	{ok, {_,_,Body}} = httpc:request(Quary),
-	% inets:stop(),
 	{Body}.
 
 
@@ -31,7 +29,7 @@ get()-> Data = getServer("http://www.nasdaq.com/screening/companies-by-name.aspx
 	filteredValues([_|T],Acc,Counter) ->
 		filteredValues(T,Acc,Counter+1).
 
- deleteSymbols([]) -> [];
+deleteSymbols([]) -> [];
 deleteSymbols([H|T]) ->
 	case (string:chr(H, $\") == 0) and (string:chr(H, $^) == 0) and (string:chr(H, $/) == 0) of %"
 		false -> deleteSymbols(T);

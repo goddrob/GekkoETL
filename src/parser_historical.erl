@@ -5,30 +5,46 @@
 
 -module(parser_historical).
 -export([main/0]).
+-compile(export_all).
 -include("../include/defs.hrl").
 
-% For testing purposes
-% -record(rec, {symbol = "", date = "", open = "0", high = "0", low = "0", close = "0", volume = "0"}).
-
-
+%% Starts the inets, gets the list from nasdaqTickers
+%% and calls to divide the list into multiple processes
 main() ->
 	inets:start(),
 	All_Tickers = nasdaqTickers:get(),
-	iterate_tickers(All_Tickers).
+	iterate_tickers(All_Tickers),
+ 	divide_tasks(All_Tickers),
+	inets:stop().
 
+%% Divides all the tickers into 4 processes and 
+%% spawn_links them
+divide_tasks(List) ->
+	{A, B} = lists:split(trunc(length(List)/2), List),
+	{A1, A2} = lists:split(trunc(length(A)/2), A),
+	{B1, B2} = lists:split(trunc(length(B)/2), B),
+	spawn_link(?MODULE, iterate_tickers, [A1]),
+ 	spawn_link(?MODULE, iterate_tickers, [A2]),
+ 	spawn_link(?MODULE, iterate_tickers, [B1]),
+ 	spawn_link(?MODULE, iterate_tickers, [B2]).
+
+%% Iterates the tickers supplised in a list
 iterate_tickers([H|T]) ->
-	spawn_link(fun() -> processTicker(H) end),
+	processTicker(H),
 	iterate_tickers(T);
 iterate_tickers([]) ->
 	ok.
 
+%% Processes each ticker by getching the CSV for 
+%% the historical data
 processTicker(Ticker) ->
 	{{Year, Month, Day}, _Time} = calendar:local_time(),
 	SYear = integer_to_list(Year),
 	SMonth = integer_to_list(Month),
 	SDay = integer_to_list(Day),
 	S = "http://ichart.yahoo.com/table.csv?s="++Ticker
-		++"&a=5"++"&b=15"++"&c=2013"++"&d="++ SMonth ++ "&e="++ SDay ++ "&f="++ SYear
+		++"&a=5"++"&b=15"++"&c=2013"++"&d="++ SMonth ++ "&e="
+		++ SDay ++ "&f="++ SYear
 			++"&d=m&ignore=.csv",
 	{CSV} = nasdaqTickers:getServer(S),
 	case (string:chr(CSV, $!) > 0) of 
@@ -36,14 +52,15 @@ processTicker(Ticker) ->
 		true -> error
 	end.
 
+%% Parses a single CSV file and calls iterate_records method to
+%% iterate over it and create records
 parse_csv(CSV, Ticker) ->
-	[_|List] = re:split(tuple_to_list(CSV), "\n",[{return,list},{parts,infinity}]),
-	dbload:load_historical_batch(iterate_records(List, [], Ticker)).
-	
-	% For testing, ignore.
-	% server ! {iterate_records(List, [], Ticker)}.
+	[_|List] = re:split(tuple_to_list(CSV), "\n",
+						[{return,list},{parts,infinity}]),
+	All_Records = iterate_records(List, [], Ticker),
+	io:format("~p~n", [All_Records]).
 
-% Iterates over records and calls another function 
+% Iterates over records and calls iterate_records function 
 % to make the actualy records for each line	
 iterate_records([H|T], Acc, Ticker) ->
 	String = string:tokens(H, ","),
@@ -53,6 +70,7 @@ iterate_records([H|T], Acc, Ticker) ->
 	end;
 iterate_records([], Acc, _Ticker) -> Acc.
 
+%% Creates the records from a line of CSV 
 make_rec([H|T], N, Rec, Ticker) -> 
 	make_rec(T, N + 1, Rec#hist_stock{symbol = Ticker, date=((H -- [$-]) --[$-])}).
 make_rec([H|T], N, Rec) when N == 1 -> 
@@ -67,31 +85,3 @@ make_rec([H|T], N, Rec) when N == 5 ->
 	make_rec(T, N + 1, Rec#hist_stock{volume=H});
 make_rec(_, _, Rec) ->
 	Rec.
-
-% Printer for testing
-print(Var) ->
-	io:format("*************"),
-	io:format("~p", [Var]),
-	io:format("*************~n").
-
-	
-% Only use for local test cases without binding to the database, printing only for the following two methods.
-test() ->
-	case whereis(server) of
-		undefined -> register(server, self());
-		_ -> registered_already
-	end,
-	inets:start(),
-	print(inets_started),
-	All_Tickers = nasdaqTickers:get(),
-	{A,_} = lists:split(2, All_Tickers),
-	print(process_starting),
-	iterate_tickers(A),
-	loop().
-	
-loop() ->
-receive
-	M -> io:format("~p~n",[M]), loop()
-	after 3000 ->
-		timeout
-end.
