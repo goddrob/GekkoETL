@@ -13,8 +13,9 @@
 main() ->
 	inets:start(),
 	All_Tickers = nasdaqTickers:get(),
-	iterate_tickers(All_Tickers),
- 	divide_tasks(All_Tickers),
+	{A,B} = lists:split(100,All_Tickers),
+	%%iterate_tickers(All_Tickers),
+ 	divide_tasks(A),
 	inets:stop().
 
 %% Divides all the tickers into 4 processes and 
