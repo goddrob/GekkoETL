@@ -58,7 +58,8 @@ parse_csv(CSV, Ticker) ->
 	[_|List] = re:split(tuple_to_list(CSV), "\n",
 						[{return,list},{parts,infinity}]),
 	All_Records = iterate_records(List, [], Ticker),
-	io:format("~p~n", [All_Records]).
+	
+	genserv_sql:call_hist(whereis(sqlserv),lists:flatten(All_Records)).
 
 % Iterates over records and calls iterate_records function 
 % to make the actualy records for each line	

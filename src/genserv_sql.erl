@@ -16,7 +16,7 @@
 -define(SERVER, ?MODULE).
 
 start_link() ->
-	gen_server:start_link(?MODULE, [], []).
+	gen_server:start_link({local,sqlserv},?MODULE,[], []).
 	
 %%
 %% Custom Functions
@@ -58,11 +58,13 @@ handle_cast({daily,RecList}, State) ->
 	Query = gen_query(daily,RecList),
 	{ok,Pid} = odbc:connect(?ConnectStr,[]),
 	odbc:sql_query(Pid,Query),
+	odbc:disconnect(Pid),
    {noreply, State};
 handle_cast({historical,RecList}, State) ->
 	Query = gen_query(historical,RecList),
 	{ok,Pid} = odbc:connect(?ConnectStr,[]),
 	odbc:sql_query(Pid,Query),
+	odbc:disconnect(Pid),
 	{noreply, State}.
   
   
