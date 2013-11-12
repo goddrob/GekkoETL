@@ -1,5 +1,5 @@
 # Erlang
-.beam
+*.beam
 
 #################
 ## Eclipse
