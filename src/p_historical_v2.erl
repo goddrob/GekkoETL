@@ -4,9 +4,9 @@
  % mini-processes and receiving messages from those printing it in in the shell.
 
 -module(p_historical_v2).
--export([main/0]).
+%% -export([main/2]).
 -include("../include/defs.hrl").
-%% -compile(export_all).
+-compile(export_all).
 %% -record(hist_stock, {symbol, date, open, high, low, close, volume}).
 
 
@@ -108,21 +108,6 @@ processTicker(Ticker, Dates) ->
 		false ->	parse_csv({CSV}, Ticker);
 		true -> 	error
 	end.
-%% processTicker(Ticker) ->
-%% 	io:format("Ticker: ~p~n", [Ticker]),
-%% 	{{Year, Month, Day}, _Time} = calendar:local_time(),
-%% 	SYear = integer_to_list(Year),
-%% 	SMonth = integer_to_list(Month),
-%% 	SDay = integer_to_list(Day),
-%% 	S = "http://ichart.yahoo.com/table.csv?s="++Ticker
-%% 		++"&a=5"++"&b=15"++"&c=2012"++"&d="++ SMonth ++ "&e="
-%% 		++ SDay ++ "&f="++ SYear
-%% 			++"&d=m&ignore=.csv",
-%% 	{CSV} = nasdaqTickers:getServer(S),
-%% 	case (string:chr(CSV, $!) > 0) of 
-%% 		false ->	parse_csv({CSV}, Ticker);
-%% 		true -> 	error
-%% 	end.
 
 %% Parses a single CSV file and calls iterate_records method to
 %% iterate over it and create records
