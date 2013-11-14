@@ -12,7 +12,7 @@
 %% Main function, the 200 decides at what point of the Tickers_List
 %% it should clear the memory, i.e do 200 sequentially and continue
 main(Old, Recent) ->
-	genserv_sql:start_link(),
+	server_sql:start_link(),
 	io:format("~nStarting...~n~n"),
 	reg(),
 	Dates = convert_dates(Old, Recent),
