@@ -9,8 +9,8 @@ getServer(Quary) ->
 	{Body}.
 
 
-get()-> Data = getServer("http://www.nasdaq.com/screening/companies-by-name.aspx?&render=download"),
-
+get()-> 
+	Data = getServer("http://www.nasdaq.com/screening/companies-by-name.aspx?&render=download"),
 
 	[_|Values] = re:split(tuple_to_list(Data), ",\r\n|\n",[{return,list},{parts,2}]),
 	

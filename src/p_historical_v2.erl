@@ -9,18 +9,26 @@
 -compile(export_all).
 %% -record(hist_stock, {symbol, date, open, high, low, close, volume}).
 
-
 %% Main function, the 200 decides at what point of the Tickers_List
 %% it should clear the memory, i.e do 200 sequentially and continue
 main(Old, Recent) ->
-	io:format("Starting...~n~n"),
+	genserv_sql:start_link(),
+	io:format("~nStarting...~n~n"),
+	reg(),
 	Dates = convert_dates(Old, Recent),
 	inets:start(),
-	register(hist_server, self()),
-	io:format("Parsing Nasdaq...~n"),
+	io:format("Parsing Nasdaq..."),
 	Tickers = nasdaqTickers:get(),
 	io:format("Parsing Yahoo...~n"),
-	parse_segment(Tickers, 200, Dates).
+	parse_segment(Tickers, 50, Dates),
+	io:format("Done~n").
+	
+reg() ->
+	case whereis(hist_server) of
+		undefined ->
+			register(hist_server, self());
+		_ -> already_registered
+	end.
 
 convert_dates(Old, now) ->
 	{{Recent_Year, Recent_Month, Recent_Day}, _Time} = calendar:local_time(),	
@@ -43,7 +51,7 @@ convert_dates(Old, Recent) ->
 %% Integer is how big of a list it will work with, before clearing memory
 parse_segment(Tickers_List, N, Dates) when length(Tickers_List) > N ->
 	{A, B} = lists:split(N, Tickers_List),
-	divide_tasks(A, 20, 0, Dates),
+	divide_tasks(A, 10, 0, Dates),
 	io:format("Segment done~n"),
 	inets:stop(),
 	inets:start(),
@@ -74,10 +82,11 @@ loop_receive(M, N) ->
 			ok;
 		false ->
 			receive
-				_Pid -> 
-					loop_receive(M, N + 1)
-				after 10000 ->
-						timeout
+				Pid when is_pid(Pid) -> 
+					loop_receive(M, N + 1);
+				CloseMsg -> io:format("~p~n", [CloseMsg])
+				% after 10000 ->
+						% timeout
 			end
 	end.
 
@@ -102,8 +111,8 @@ processTicker(Ticker, Dates) ->
 	URL = "http://ichart.yahoo.com/table.csv?s="++Ticker
 		++"&a=" ++ Old_Month ++"&b="++ Old_Day ++ "&c=" ++ Old_Year
 		++"&d="++ Recent_Month ++ "&e=" ++ Recent_Day ++ "&f="++ Recent_Year
-			++"&d=m&ignore=.csv",
-	{CSV} = nasdaqTickers:getServer(URL),
+			++"&d=m&ignore=.csv",	
+	{ok, {_,_,CSV}} = httpc:request(URL),
 	case (string:chr(CSV, $!) > 0) of 
 		false ->	parse_csv({CSV}, Ticker);
 		true -> 	error
