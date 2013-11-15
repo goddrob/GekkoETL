@@ -1,7 +1,14 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Daily Stock data grabber/parser %%
+%% Author : Robert Petre           %%
+%% Group  : Gekko                  %% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 -module(server_daily).
 -include("../include/defs.hrl").
 -behaviour(gen_server).
 
+%% Only use these 3 exports
 -export([start_link/0,run_update/0,stop/0]).
 
 -export([init/1, handle_call/3, handle_cast/2 ,handle_info/2,
@@ -14,8 +21,10 @@ start_link() ->
 %% Public custom functions
 %%	
 
+%% Call once to start updating, it schedules further updates by itself
 run_update() ->
 	gen_server:call(whereis(serverDaily),{runUpdate,true}).
+%% Call to safely stop the gen server
 stop() ->
 	gen_server:call(whereis(serverDaily),stop).
 
@@ -26,9 +35,7 @@ stop() ->
 	
 init([]) -> 
 	inets:start(),
-	{ok,{_,_,_,_,_,[{A,B,C,D}]}} = inet:gethostbyname("dev.semprog.se"),
-	IpAddr = lists:flatten(io_lib:format("~p.~p.~p.~p",[A,B,C,D])),
-	{ok,Pid} = inets:start(ftpc,[{host,IpAddr},{port,21}]),
+	{ok,Pid} = inets:start(ftpc,[{host,"dev.semprog.se"},{port,21}]),
 	ftp:user(Pid,"FTPUser","Gekkopass1"),
 	ftp:nlist(Pid),
 	{ok, {pid,Pid}}.

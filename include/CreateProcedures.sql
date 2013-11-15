@@ -49,4 +49,23 @@ AS
 				INSERT(Symbol,Date,[Open],[Close],MinPrice,MaxPrice,Volume)
 				VALUES(@Symbol,@Date,@Open,@Close,@MinPrice,@MaxPrice,@Volume);
 	COMMIT 
-	GO
+GO
+CREATE PROCEDURE s_addNews
+	@Symbol nchar(10),@Date datetime,
+	@Headline nvarchar(150), @Hyperlink nvarchar(150)
+AS 
+	SET TRANSACTION ISOLATION LEVEL SERIALIZABLE
+	BEGIN TRANSACTION
+	MERGE StockNews WITH (UPDLOCK) AS myTarget
+		USING (SELECT @Symbol AS Symbol,
+		@Date AS Date, @Headline AS Headline, @Hyperlink AS Hyperlink) AS mySource
+		ON mySource.Symbol = myTarget.Symbol AND mySource.Headline = myTarget.Headline
+		WHEN MATCHED 
+			THEN UPDATE 
+				SET Hyperlink = mySource.Hyperlink, Date = mySource.Date		
+		WHEN NOT MATCHED
+			THEN
+				INSERT(Symbol,Headline,Hyperlink,Date)
+				VALUES(@Symbol,@Headline,@Hyperlink,@Date);
+	COMMIT
+GO
