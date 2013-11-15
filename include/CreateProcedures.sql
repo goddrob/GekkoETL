@@ -1,3 +1,9 @@
+/*
+*
+* Stored procedures for StockDB Database in SQL Server 2008 R2
+* @Author : Robert Petre
+*
+*/
 USE StockDB;
 GO
 CREATE PROCEDURE s_addDaily 
