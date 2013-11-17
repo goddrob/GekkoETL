@@ -25,23 +25,10 @@ receive
 		odbc:stop()
 end.
 
-ready() ->
-	{ok,Pid} = odbc:connect(?ConnectStr,[{timeout, 200000}]),
-	Pid.
-
-disconnect(Pid) ->	
-	odbc:disconnect(Pid).
-	
 update(List, Pid) ->
 	Query = gen_query(historical, List),
 	_Result = odbc:sql_query(Pid, Query).
 
-% update(Record) ->
-	% Query = get_query(Record),
-	% {ok,Pid} = odbc:connect(?ConnectStr,[{timeout, 200000}]),
-	% Result = odbc:sql_query(Pid, Query),
-	% odbc:disconnect(Pid),
-	% Result.
 
 %% Private Helper functions 
 %% Generate queries from records 

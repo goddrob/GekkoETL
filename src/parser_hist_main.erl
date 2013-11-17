@@ -8,7 +8,6 @@ start(Old, Recent) ->
 	spawn_link(db, start, []),
 	Dates = convert_dates(Old, Recent),
 	Tickers = parse_nasdaq(),
-
 	parse_yahoo(Tickers, Dates).
 	
 register() ->
@@ -25,7 +24,7 @@ parse_nasdaq() ->
 	Tickers.
 
 parse_yahoo(Tickers, Dates) ->
-	parse_yahoo(Tickers, Dates, 80).
+	parse_yahoo(Tickers, Dates, 160).
 
 parse_yahoo(Tickers, Dates, Segment_Size) when length(Tickers) > Segment_Size ->
 	{A, B} = lists:split(Segment_Size, Tickers),
