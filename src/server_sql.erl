@@ -51,7 +51,7 @@ call_news(List,NewList,20) ->
 	call_news(List,[],0);
 call_news([],NewList,_) -> gen_server:cast(whereis(serverSQL),{news,NewList});
 call_news([H|T],NewList,Inc) ->
-	call_news(T,[H|NewList],Inc+1.
+	call_news(T,[H|NewList],Inc+1).
 	
 %% Stops sql gen server
 stop() ->
