@@ -13,18 +13,12 @@ process_ticker(Ticker, Dates) ->
 		++"&a=" ++ Old_Month ++"&b="++ Old_Day ++ "&c=" ++ Old_Year
 		++"&d="++ Recent_Month ++ "&e=" ++ Recent_Day ++ "&f="++ Recent_Year
 			++"&d=m&ignore=.csv",
-	% try
-		% {ok, Pid} = inets:start(httpc, foo),
 		{ok, {_,_,CSV}} = httpc:request(URL, foo),
 		% inets:stop(httpc, Pid),
 		case (string:chr(CSV, $!) > 0) of 
 			false ->	parse_csv({CSV}, Ticker);
 			true -> 	parser_hist_main ! {self(), unparsable_CSV}
 		end.
-	% catch
-		% error:_Error -> hist_server ! {self(), {error, Ticker, Dates}}
-	% end.
-
 
 %% Parses a single CSV file and calls iterate_records method to
 %% iterate over it and create records
@@ -32,12 +26,10 @@ parse_csv(CSV, Ticker) ->
 	[_|List] = re:split(tuple_to_list(CSV), "\n",
 						[{return,list},{parts,infinity}]),
 	T = lists:flatten(iterate_records(List, [], Ticker)),
-	case hist_db:call(hist_db, T) of
-		ok -> parser_hist_main ! {self(), done};
-		_ -> io:format("Bigtime Error~n")
+	db ! {self(), T},
+	receive
+		ok -> parser_hist_main ! {self(), done}
 	end.
-
-
 
 % Iterates over records and calls iterate_records function 
 % to make the actualy records for each line	

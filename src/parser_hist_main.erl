@@ -5,9 +5,10 @@
 start(Old, Recent) ->
 	inets:start(),
 	register(),
-	spawn_link(hist_db, start_link, []),
+	spawn_link(db, start, []),
 	Dates = convert_dates(Old, Recent),
 	Tickers = parse_nasdaq(),
+
 	parse_yahoo(Tickers, Dates).
 	
 register() ->
@@ -40,7 +41,7 @@ spawn_workers(Tickers, Dates) ->
 	spawn_workers(Tickers, Dates, 0).
 
 spawn_workers([One_Ticker|Rest], Dates, Children) ->
-	spawn(parser_hist_worker, process_ticker, [One_Ticker, Dates]),
+	spawn_link(parser_hist_worker, process_ticker, [One_Ticker, Dates]),
 	spawn_workers(Rest, Dates, Children + 1);
 spawn_workers([], _Dates, Children) ->
 	loop_receive(Children).
@@ -59,9 +60,11 @@ loop_receive(Children, Normal_Exits) ->
 				{Pid, unparsable_CSV} ->
 					io:format("Could not read CSV at: ~p~n", [Pid]),
 					loop_receive(Children, Normal_Exits + 1);
-				{Pid, {error, Ticker, Dates}} ->
+				{Pid, {error, _Ticker, _Dates}} ->
 					io:format("Error in Pid: ~p...~n", [Pid]),
-					loop_receive(Children, Normal_Exits + 1)
+					loop_receive(Children, Normal_Exits + 1);
+				Catch_All -> 
+					io:format("Catch_All: ~p", [Catch_All])
 			end
 	end.
 
