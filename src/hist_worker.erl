@@ -51,11 +51,9 @@ make_records(Line, Ticker, Pid) ->
 	[Date, Open, High, Low, Close, Volume, _] = string:tokens(Line, ","),
 	H = #hist_stock{symbol = Ticker, date = Date, open = Open, high = High,
 				low = Low, close = Close, volume = Volume},
-	Query = db:gen_entry(historical, H) ++ ";",
+	Query = gen_entry(historical, H) ++ ";",
 	_Result = odbc:sql_query(Pid, Query).
-	% io:format("~p~n", [Result]).
+	
+gen_entry(historical, R) -> "EXEC s_addHistorical @Symbol='"++R#hist_stock.symbol++"',@Date='"++R#hist_stock.date++"',@Open="++R#hist_stock.open++",@Close="++R#hist_stock.close++",@MaxPrice="++R#hist_stock.high++",@MinPrice="++R#hist_stock.low++",@Volume="++R#hist_stock.volume.
 
-
-	% db:update(R).
-%% 	dbload:insert(Stock).
 				
