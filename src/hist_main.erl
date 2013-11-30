@@ -2,6 +2,8 @@
 -include("../include/defs.hrl").
 -compile(export_all).
 
+-define(AMOUNT_OF_CONCURRENT_PROC, 500).
+
 test() ->
 	T = startup(),
 	parse_yahoo(T, convert_dates(default)).
@@ -29,7 +31,6 @@ startup() ->
 	inets:start(),
 	odbc:start(),
 	register(),
-	spawn_link(db, start, []),
 	parse_nasdaq().
 
 register() ->
@@ -46,7 +47,7 @@ parse_nasdaq() ->
 	Tickers.
 
 parse_yahoo(Tickers, Dates) ->
-	parse_yahoo(Tickers, Dates, 500).
+	parse_yahoo(Tickers, Dates, ?AMOUNT_OF_CONCURRENT_PROC).
 
 parse_yahoo(Tickers, Dates, Segment_Size) when length(Tickers) > Segment_Size ->
 	{A, B} = lists:split(Segment_Size, Tickers),
@@ -77,7 +78,7 @@ loop_receive(Children, Normal_Exits) ->
 			receive
 				{'EXIT', _Pid, {A, B}} ->
 					P = spawn_link(worker, process_ticker, [A, B]),
-					io:format("~n~nRESTARTING PROCESS: ~p~n~n", [P]),
+					io:format("Restarting process: ~p~n", [P]),
 					loop_receive(Children, Normal_Exits);
 				{'EXIT', _Pid, normal} ->
 					loop_receive(Children, Normal_Exits + 1);
