@@ -2,11 +2,12 @@
 -include("../include/defs.hrl").
 -compile(export_all).
 
--define(AMOUNT_OF_CONCURRENT_PROC, 500).
+-define(AMOUNT_OF_C_PROC, 500).
 
 test() ->
-	T = startup(),
-	parse_yahoo(T, convert_dates(default)).
+	Tickers = startup(),
+	% {A, _} = lists:split(1, Tickers),
+	parse_yahoo(Tickers, convert_dates(default)).
 
 start(Old, Recent) ->
 	main(Old, Recent).
@@ -46,15 +47,11 @@ parse_nasdaq() ->
 	io:format("done~n~n"),
 	Tickers.
 
-parse_yahoo(Tickers, Dates) ->
-	parse_yahoo(Tickers, Dates, ?AMOUNT_OF_CONCURRENT_PROC).
-
-parse_yahoo(Tickers, Dates, Segment_Size) when length(Tickers) > Segment_Size ->
-	{A, B} = lists:split(Segment_Size, Tickers),
+parse_yahoo(Tickers, Dates) when length(Tickers) > ?AMOUNT_OF_C_PROC ->
+	{A, B} = lists:split(?AMOUNT_OF_C_PROC, Tickers),
 	spawn_workers(A, Dates),
-	restart_inets(),
-	parse_yahoo(B, Dates, Segment_Size);
-parse_yahoo(Tickers, Dates, _Segment_Size) ->
+	parse_yahoo(B, Dates);
+parse_yahoo(Tickers, Dates) ->
 	spawn_workers(Tickers, Dates),
 	io:format("~n~nDone........restarting in: 6 hours~n~n").
 
@@ -73,21 +70,21 @@ loop_receive(Children) ->
 loop_receive(Children, Normal_Exits) ->
 	case Children == Normal_Exits of 
 		true ->
-			io:format("**Finished segment of size: ~p**~n", [Children]);
+			{_, {H, Min, Sec}} = calendar:local_time(),
+			io:format("**Time: ~p:~p:~p, Finished segment of size: ~p**~n", [H, Min, Sec, Children]);
 		false ->
 			receive
-				{'EXIT', _Pid, {A, B}} ->
-					P = spawn_link(worker, process_ticker, [A, B]),
-					io:format("Restarting process: ~p~n", [P]),
-					loop_receive(Children, Normal_Exits);
 				{'EXIT', _Pid, normal} ->
 					loop_receive(Children, Normal_Exits + 1);
+				{'EXIT', _Pid, {badmatch, {Ticker, Date}}} ->
+					Pid = spawn_link(hist_worker, process_ticker, [Ticker, Date]),
+					io:format("Badmatched Ticker: ~p, restarting Pid: ~p~n", [Ticker, Pid]),
+					loop_receive(Children, Normal_Exits);
 				Catch_All -> 
-					io:format("Catch_All: ~p", [Catch_All]),
-					loop_receive(Children, Normal_Exits)
+					io:format("Catch_All: ~p~n", [Catch_All]),
+					loop_receive(Children, Normal_Exits + 1)
 			end
 	end.
-
 restart_inets() ->
 	inets:stop(httpc, foo),
 	inets:start(httpc, [{profile, foo}]).

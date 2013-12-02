@@ -2,6 +2,7 @@
 
 -include("../include/defs.hrl").
 -compile(export_all).
+-define(AMOUNT, 100).
 
 %% Processes each ticker by getching the CSV for 
 %% the historical data
@@ -19,41 +20,49 @@ process_ticker(Ticker, Dates) ->
 			false ->	
 				io:format("Pid: ~p, Processing Ticker:~p at ~p:~p:~p~n", [self(), Ticker, Hour, Min, Sec]),
 				parse_csv({CSV}, Ticker);
-			true -> 	ok
+			true -> invalid_csv
 		end
 	catch
-		_:_ -> io:format("~nEXITING~n"), exit({Ticker, Dates})
+		error:{badmatch, _} -> 
+			exit({badmatch, {Ticker, Dates}});
+		error:CatchAll -> 
+			io:format("~p~n", [CatchAll])
 	end.
 	
 
 %% Parses a single CSV file and calls iterate_records method to
 %% iterate over it and create records
 parse_csv(CSV, Ticker) ->
-	[_|List] = re:split(tuple_to_list(CSV), "\n",
+	[_|Relevant_Info] = re:split(tuple_to_list(CSV), "\n",
 						[{return,list},{parts,infinity}]),
+						
 	{ok, Pid} = odbc:connect(?ConnectStr,[{timeout, 500000}]),
-	iterate_records(List, [], Ticker,  Pid),
+	iterate_records(Relevant_Info, [], Ticker, Pid),
 	odbc:disconnect(Pid).
-	% parser ! {self(), done}.
 
 % Iterates over records and calls iterate_records function 
 % to make the actualy records for each line	
+iterate_records(List, Acc, Ticker, Pid) when length(Acc) == ?AMOUNT ->
+	_Result = odbc:sql_query(Pid, lists:flatten(Acc)),
+	iterate_records(List, [], Ticker, Pid);
 iterate_records([H|T], Acc, Ticker, Pid) ->
-	String = string:tokens(H, ","),
-	case String =/= [] of
-	 true -> iterate_records(T, [make_records(H, Ticker, Pid)|Acc], Ticker, Pid);
-	 false -> Acc
-	end;
-iterate_records([], Acc, _Ticker, _Pid) -> Acc.
+	case H == [] of
+		true -> 
+			Result = odbc:sql_query(Pid, lists:flatten(Acc));
+		false ->
+			iterate_records(T, [make_records(H, Ticker)|Acc], Ticker, Pid)
+	end.
 
 %% Makes the records
-make_records(Line, Ticker, Pid) ->
+make_records(Line, Ticker) ->
+	% io:format("~p~n", Line).
 	[Date, Open, High, Low, Close, Volume, _] = string:tokens(Line, ","),
-	H = #hist_stock{symbol = Ticker, date = Date, open = Open, high = High,
-				low = Low, close = Close, volume = Volume},
-	Query = gen_entry(historical, H) ++ ";",
-	_Result = odbc:sql_query(Pid, Query).
-	
-gen_entry(historical, R) -> "EXEC s_addHistorical @Symbol='"++R#hist_stock.symbol++"',@Date='"++R#hist_stock.date++"',@Open="++R#hist_stock.open++",@Close="++R#hist_stock.close++",@MaxPrice="++R#hist_stock.high++",@MinPrice="++R#hist_stock.low++",@Volume="++R#hist_stock.volume.
+	_E = "EXEC s_addHistorical " ++
+	"@Symbol='" ++ Ticker ++ "'," ++
+	"@Date='" ++ Date ++ "'," ++
+	"@Open=" ++ Open ++ "," ++
+	"@Close=" ++ Close ++ "," ++
+	"@MaxPrice=" ++ High ++ "," ++
+	"@MinPrice=" ++ Low ++ "," ++
+	"@Volume=" ++ Volume ++ ";".
 
-				
