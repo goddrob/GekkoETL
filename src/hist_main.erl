@@ -3,6 +3,7 @@
 -compile(export_all).
 
 -define(AMOUNT_OF_C_PROC, 500).
+%Test comment GIT
 
 test() ->
 	Tickers = startup(),
