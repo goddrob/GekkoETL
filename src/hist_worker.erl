@@ -1,5 +1,5 @@
 -module(hist_worker).
-
+%% Test Comment
 -include("../include/defs.hrl").
 -compile(export_all).
 -define(AMOUNT, 100).
