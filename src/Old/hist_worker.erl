@@ -4,11 +4,9 @@
 -compile(export_all).
 -define(AMOUNT, 100).
 
-
-
 %% Processes each ticker by getching the CSV for 
 %% the historical data
-process_ticker(Ticker, Dates, Restarts) ->
+process_ticker(Ticker, Dates) ->
 	{_,{Hour,Min,Sec}} = erlang:localtime(),
 	{{Old_Year, Old_Month, Old_Day}, 
 	 {Recent_Year, Recent_Month, Recent_Day}} = Dates,
@@ -17,31 +15,18 @@ process_ticker(Ticker, Dates, Restarts) ->
 		++"&d="++ Recent_Month ++ "&e=" ++ Recent_Day ++ "&f="++ Recent_Year
 			++"&d=m&ignore=.csv",
 	try
-		{ok, {_,_,CSV}} = httpc:request(get, {URL, []}, [{connect_timeout, 1000}, {timeout, 30000}], []),
-	
+		{ok, {_,_,CSV}} = httpc:request(URL, foo),
 		case (string:chr(CSV, $!) > 0) of 
 			false ->	
-%% 				io:format("Pid: ~p, Processing Ticker:~p at ~p:~p:~p~n", [self(), Ticker, Hour, Min, Sec]),
+				io:format("Pid: ~p, Processing Ticker:~p at ~p:~p:~p~n", [self(), Ticker, Hour, Min, Sec]),
 				parse_csv({CSV}, Ticker);
-%% 				io:format("Succeded, Ticker: ~p~n", [Ticker]);
-			true -> 
-				common_methods:print(?MODULE, "Yahoo says ticker not found: ", Ticker)
-		end,
-		exit({normal, Ticker})
+			true -> invalid_csv
+		end
 	catch
-		error:{badmatch,{error,socket_closed_remotely}} -> 
-%% 			io:format("Socket closed remotely, ticker: ~p~n", [Ticker]),
-			exit({badmatch, Ticker, Restarts});
-		error:{badmatch, {error, {failed_connect,_}}} ->
-%% 			io:format("Failed connect, ticker: ~p~n", [Ticker]),
-			exit({badmatch, Ticker, Restarts});
-		error:{badmatch,{error,timeout}} ->
-%% 			io:format("Timed out, ticker:~p~n", [Ticker]),
-			exit({badmatch, Ticker, Restarts})
-%% 		error:Catch_all -> 
-%% 			io:format("~nIn ex, catch_all, Msg: ~p~n", [Catch_all]),
-%% 			throw("Dani look here : " ++ Ticker),
-%% 			exit({catch_all, Catch_all})
+		error:{badmatch, _} -> 
+			exit({badmatch, {Ticker, Dates}});
+		error:CatchAll -> 
+			io:format("~p~n", [CatchAll])
 	end.
 	
 
@@ -50,22 +35,20 @@ process_ticker(Ticker, Dates, Restarts) ->
 parse_csv(CSV, Ticker) ->
 	[_|Relevant_Info] = re:split(tuple_to_list(CSV), "\n",
 						[{return,list},{parts,infinity}]),
- 	{ok, Pid} = odbc:connect(?ConnectStr,[{timeout, 2000}]),
-	Pid = lol,
-	iterate_records(Relevant_Info, [], Ticker, Pid).
- 	odbc:disconnect(Pid).
+						
+	{ok, Pid} = odbc:connect(?ConnectStr,[{timeout, 500000}]),
+	iterate_records(Relevant_Info, [], Ticker, Pid),
+	odbc:disconnect(Pid).
 
 % Iterates over records and calls iterate_records function 
 % to make the actualy records for each line	
 iterate_records(List, Acc, Ticker, Pid) when length(Acc) == ?AMOUNT ->
- 	_Result = odbc:sql_query(Pid, lists:flatten(Acc)),
+	_Result = odbc:sql_query(Pid, lists:flatten(Acc)),
 	iterate_records(List, [], Ticker, Pid);
 iterate_records([H|T], Acc, Ticker, Pid) ->
 	case H == [] of
 		true -> 
-			% ok;
- 			io:format("~p~n", [Acc]);
- 			Result = odbc:sql_query(Pid, lists:flatten(Acc));
+			Result = odbc:sql_query(Pid, lists:flatten(Acc));
 		false ->
 			iterate_records(T, [make_records(H, Ticker)|Acc], Ticker, Pid)
 	end.
