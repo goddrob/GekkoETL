@@ -14,3 +14,11 @@
 -define(ConnectStr, "DSN=Gekko;UID=sa;PWD=Qwerty020390").
 -define(SQLSERVER, serverSQL).
 -define(DAILYSERVER, serverDaily).
+
+%% Connection timeouts. Used in hist_gen, news_gen, nasdaqTickers
+-define(Url_Connect_Timeout, 3000).
+-define(Url_Connection_Alive_Timeout, 30000).
+-define(Database_Connection_Timeout, 200000).
+
+%% Amount of restarts, used in hist_gen, news_gen
+-define(Amount_Of_Restarts, 2).

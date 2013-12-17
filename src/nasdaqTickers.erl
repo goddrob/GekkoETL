@@ -1,21 +1,16 @@
 
 -module(nasdaqTickers).
--export([start/1, read/0, read/1, getServer/1,get_tickers/0,filteredValues/3,deleteSymbols/1]).
+-export([start/1, read/0, getServer/1,get_tickers/0,filteredValues/3,deleteSymbols/1]).
 -compile(export_all).
 
 -define(TIMEOUT, 10000).
 
-start(N) ->
+start(Time) ->
 	read(),
-	timer:apply_interval(N, ?MODULE, read, []),
+	timer:apply_interval(Time, ?MODULE, read, []),
 	{ok, self()}.
 
 read() ->
-	read(0).
-
-read(3) ->
-	throw("Cannot read tickers online");
-read(N) ->
 	try
 		inets:start(),
 		Tickers = get_tickers(),
@@ -23,7 +18,7 @@ read(N) ->
 		file:write_file("tickers.txt", io_lib:fwrite("~p.\n", [Tickers]))
 	catch
 	_:_ ->
-		read(N + 1)
+		throw("Cannot read tickers online")
 	end.
 
 getServer(Quary) ->

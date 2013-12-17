@@ -10,6 +10,8 @@ read_existing_file() ->
 		false ->
 			throw("Tickers.txt not found")
 	end.
+
+
 parse_binary(Binary) ->
 	String = re:replace(Binary, "\\[|]|'|\\s|\\n| |\\.|", "", [global, {return, list}]),
 	List = string:tokens(String, ","),

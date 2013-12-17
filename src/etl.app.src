@@ -9,7 +9,9 @@
 	news_gen,
 	news_worker,
 	nasdaq_bridge,
-	nasdaqTickers
+	nasdaqTickers,
+	serverSQL,
+	serverDaily
 	]},
   {registered, [
 	etl_sup,

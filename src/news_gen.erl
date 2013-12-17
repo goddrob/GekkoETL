@@ -2,8 +2,9 @@
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
+-include("../include/defs.hrl").
+
 -define(AMOUNT_OF_C_PROC, 100).
--define(NUM_OF_RESTARTS, 1).
 -record(state, {tickers, con_count}).
 
 %% ====================================================================
@@ -22,6 +23,9 @@ start(Sleeptime) ->
 	timer:apply_interval(Sleeptime, ?MODULE, repeat, []),
 	Return.
 
+%% Calls for the server to start parsing information.
+%% If the response is already_started, it will sleep before calling
+%% again.
 repeat() ->
 	Var = gen_server:call(?MODULE, start),
 	case Var of
@@ -51,7 +55,7 @@ handle_call(start, _From, State) ->
 
 %% handle_cast/2
 %% ====================================================================
-handle_cast(Msg, State) ->
+handle_cast(_Msg, State) ->
 	{noreply, State}.
 	
 %% handle_info/2
@@ -59,47 +63,48 @@ handle_cast(Msg, State) ->
 handle_info({'EXIT', _Pid, {badmatch, Ticker, Restarts}}, State) ->
 	restart_worker(Ticker,  Restarts),
 	{noreply, State};
-handle_info({'EXIT', _Pid, {catch_all, Msg}}, State) ->
 
+handle_info({'EXIT', _Pid, {catch_all, Msg}}, State) ->
+	error_logging:cast_error(Msg),
 	{noreply, State};
 
-
-handle_info({'EXIT', _Pid, {normal, Ticker}}, State) 
-  when State#state.con_count < 1 , length(State#state.tickers) > ?AMOUNT_OF_C_PROC ->
-	common_methods:print(?MODULE, "Finished segment of: ", ?AMOUNT_OF_C_PROC),
-	{Segment, _Rest} = lists:split(?AMOUNT_OF_C_PROC, State#state.tickers),
-	spawn_workers(Segment),
-	NewState = #state{con_count = ?AMOUNT_OF_C_PROC - 1, 
-					  tickers = State#state.tickers -- [Ticker]},
-	{noreply, NewState};
 handle_info({'EXIT', _Pid, {normal, Ticker}}, State)
-  when State#state.con_count < 1 ->
-	NewState = #state{con_count = ?AMOUNT_OF_C_PROC - 1, 
-					  tickers = State#state.tickers -- [Ticker]},
-	common_methods:print(?MODULE, "Processing last segment of: ", length(NewState#state.tickers)),
-	spawn_workers(NewState#state.tickers),
+  when State#state.con_count == 0 ->
+	NewState = create_newstate(State, Ticker, segment_done),
+	split_and_spawn(NewState#state.tickers),
+	common_methods:print(?MODULE, "Processing segment of: ", ?AMOUNT_OF_C_PROC),
 	{noreply, NewState};
-handle_info({'EXIT', _Pid, {normal, Ticker}}, State) ->
-	NewState = #state{con_count = State#state.con_count - 1, 
-					  tickers = State#state.tickers -- [Ticker]},
-	case NewState#state.tickers == [] of
+
+handle_info({'EXIT', _Pid, {normal, Ticker}}, State) ->	
+	NewState = create_newstate(State, Ticker, normal),
+	parse_or_pause(NewState).
+
+create_newstate(State, Ticker_To_Remove, segment_done) ->
+	#state{con_count = ?AMOUNT_OF_C_PROC - 1, 
+		tickers = State#state.tickers -- [Ticker_To_Remove]};
+
+create_newstate(State, Ticker_To_Remove, normal) ->
+	#state{con_count = State#state.con_count - 1, 
+		tickers = State#state.tickers -- [Ticker_To_Remove]}.
+
+parse_or_pause(State) ->
+	case State#state.tickers == [] of
 		false ->
-			{noreply, NewState};
+			{noreply, State};
 		true ->
-			common_methods:print(?MODULE, "Finishing"),
+			common_methods:print(?MODULE, "Finished"),
 			{noreply, #state{}}
 	end.
 
-
 %% terminate/2
 %% ====================================================================
-terminate(Reason, State) ->
+terminate(_Reason, _State) ->
 	ok.
 
 
 %% code_change/3
 %% ====================================================================
-code_change(OldVsn, State, Extra) ->
+code_change(_OldVsn, State, _Extra) ->
 	{ok, State}.
 
 
@@ -109,22 +114,30 @@ code_change(OldVsn, State, Extra) ->
 
 start_up() ->
 	inets:start(),
+	odbc:start(),
 	process_flag(trap_exit, true),
 	common_methods:print(?MODULE, "Starting..."),
 	Tickers = common_methods:read_existing_file(),
-	{A, _} = lists:split(202, Tickers),
-	{Segment, _Rest} = lists:split(?AMOUNT_OF_C_PROC, Tickers),
-	spawn_workers(Segment),
+	split_and_spawn(Tickers),
 	Tickers.
 
-spawn_workers([One_Ticker|Rest]) ->
+split_and_spawn(Tickers) ->
+	try
+		{Segment, _Rest} = lists:split(?AMOUNT_OF_C_PROC, Tickers),
+		iterate_and_spawn(Segment)
+	catch
+		error:_Could_Not_Split ->
+			iterate_and_spawn(Tickers)
+	end.
+
+iterate_and_spawn([One_Ticker|Rest]) ->
 	spawn_link(news_worker, process_ticker, [One_Ticker, 0]),
-	spawn_workers(Rest);
-spawn_workers([]) ->
+	iterate_and_spawn(Rest);
+iterate_and_spawn([]) ->
 	ok.
 
 restart_worker(Ticker, N) ->
-	case N > ?NUM_OF_RESTARTS of
+	case N > ?Amount_Of_Restarts of
 		true ->
 			common_methods:print(?MODULE, "This ticker reached max amount of restarts: ", Ticker),
 			?MODULE ! {'EXIT', restart_pid, {normal, Ticker}};

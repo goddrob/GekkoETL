@@ -4,30 +4,36 @@
 -include_lib("xmerl/include/xmerl.hrl").
 -include("../include/defs.hrl").
 
-
 process_ticker(Ticker, Restarts) ->
-%% 	io:format("Pid: ~p, Processing Ticker:~p~n", [self(), Ticker]),
+	inets:start(),
+	odbc:start(),
 	try
-		{ok, {_Status, _Headers, Body}} = httpc:request(
-			"http://articlefeeds.nasdaq.com/nasdaq/symbols?symbol=" 
-				++ string:to_upper(Ticker)),
+		URL = "http://articlefeeds.nasdaq.com/nasdaq/symbols?symbol=" 
+							++ string:to_upper(Ticker),
+		Body = download_data(URL),
 		{ Xml, _Rest } = xmerl_scan:string(Body),
 		printItems(getElements(Xml), Ticker),
 		exit({normal, Ticker})
 	catch
 		error:{badmatch,{error,socket_closed_remotely}} -> 
-%% 			io:format("Socket closed remotely, ticker: ~p~n", [Ticker]),
+			io:format("Socket closed remotely, ticker: ~p~n", [Ticker]),
 			exit({badmatch, Ticker, Restarts});
 		error:{badmatch, {error, {failed_connect,_}}} ->
-%% 			io:format("Failed connect, ticker: ~p~n", [Ticker]),
+			io:format("Failed connect, ticker: ~p~n", [Ticker]),
 			exit({badmatch, Ticker, Restarts});
 		error:{badmatch,{error,timeout}} ->
-%% 			io:format("Timed out, ticker:~p~n", [Ticker]),
+			io:format("Timed out, ticker:~p~n", [Ticker]),
 			exit({badmatch, Ticker, Restarts});
 		error:Catch_all -> 
 			io:format("~nIn ex, catch_all, Msg: ~p~n", [Catch_all]),
 			exit({catch_all, Catch_all})
 	end.
+
+download_data(URL) ->
+	{ok, {_,_,CSV}} = httpc:request(get, {URL, []}, 
+					[{connect_timeout, ?Url_Connect_Timeout}, 
+					 {timeout, ?Url_Connection_Alive_Timeout}], []),
+	CSV.
 
 getElements([H|T]) when H#xmlElement.name == item ->
 	[H | getElements(T)];
@@ -47,10 +53,9 @@ printItems(Items, Ticker) ->
 printItems([H|T], Acc, Ticker) ->
 	printItems(T, [create_query(H, Ticker)|Acc], Ticker);
 printItems([], Acc, _Ticker) -> 
-	% ok.
- 	% io:format("~p~n", [Acc]).
- 	{ok, Pid} = odbc:connect(?ConnectStr,[{timeout, 2000}]),
+ 	{ok, Pid} = odbc:connect(?ConnectStr,[{timeout, ?Database_Connection_Timeout}]),
 	_Result = odbc:sql_query(Pid, Acc),
+%% 	io:format("~p~n", [Result]),
 	odbc:disconnect(Pid).
 
 first(Item, Tag) ->

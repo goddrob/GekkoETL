@@ -2,8 +2,8 @@
 -behaviour(gen_server).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
+-include("../include/defs.hrl").
 -define(AMOUNT_OF_C_PROC, 100).
--define(NUM_OF_RESTARTS, 1).
 -record(state, {tickers, con_count, dates}).
 
 %% ====================================================================
@@ -16,7 +16,13 @@
 %% Behavioural functions 
 %% ====================================================================
 
+test() ->
+	Return = gen_server:start_link({local, ?MODULE}, ?MODULE, [], []),
+	historical({"20000202", "20050303"}),
+	timer:apply_interval(100000, ?MODULE, repeat, []),
+	Return.
 
+%% start(dates, sleeptime)
 start(Dates, Sleeptime) ->
 	Return = gen_server:start_link({local, ?MODULE}, ?MODULE, [], []),
 	historical(Dates),
@@ -48,7 +54,7 @@ handle_call(Dates, _From, State) when State#state.tickers == undefined ->
 	{Tickers, NewDates} = start_up(Dates),
 	Reply = ok,
 	{reply, Reply, #state{tickers = Tickers, con_count = ?AMOUNT_OF_C_PROC - 1, dates = NewDates}};
-handle_call(Dates, _From, State) ->
+handle_call(_Dates, _From, State) ->
 	Reply = already_started,
 	{reply, Reply, State}.
 
@@ -63,52 +69,33 @@ handle_cast(_Msg, State)	->
 handle_info({'EXIT', _Pid, {badmatch, Ticker, Restarts}}, State) ->
 	restart_worker(Ticker, State#state.dates, Restarts),
 	{noreply, State};
+
 handle_info({catch_all, Msg}, State) ->
-	common_methods:print(?MODULE, "Catch all, report it to Dani! Error message: ", Msg),
-%% 	restart_worker(Ticker, State#state.dates, Restarts),
+	error_logging:cast_error(Msg),
 	{noreply, State};
 
-handle_info({'EXIT', _Pid, {normal, Ticker}}, State) 
-  when State#state.con_count < 1 , length(State#state.tickers) > ?AMOUNT_OF_C_PROC ->
-	{Segment, _Rest} = lists:split(?AMOUNT_OF_C_PROC, State#state.tickers),
-	spawn_workers(Segment, State#state.dates),
-	NewState = #state{con_count = ?AMOUNT_OF_C_PROC - 1, 
-					  dates = State#state.dates,  
-					  tickers = State#state.tickers -- [Ticker]},
-	common_methods:print(?MODULE, "Finished segment of: ", ?AMOUNT_OF_C_PROC),
-	{noreply, NewState};
+
 handle_info({'EXIT', _Pid, {normal, Ticker}}, State)
-  when State#state.con_count < 1 ->
-	NewState = #state{con_count = ?AMOUNT_OF_C_PROC - 1, 
-					  dates = State#state.dates,  
-					  tickers = State#state.tickers -- [Ticker]},
-	common_methods:print(?MODULE, "Processing last segment of: ", length(NewState#state.tickers)),
-	spawn_workers(NewState#state.tickers, State#state.dates),
+  when State#state.con_count == 0 ->
+	NewState = create_newstate(State, Ticker, segment_done),
+	common_methods:print(?MODULE, "Processing segment of: ", ?AMOUNT_OF_C_PROC),
+	split_and_spawn(NewState#state.tickers, State#state.dates),
 	{noreply, NewState};
-handle_info({'EXIT', Pid, {normal, Ticker}}, State) ->	
-%% 	io:format("Handled ticker:~p, Left:~p~n", [Ticker, length(State#state.tickers)]),
-	NewState = #state{con_count = State#state.con_count - 1, 
-					  dates = State#state.dates,  
-					  tickers = State#state.tickers -- [Ticker]},
-	case NewState#state.tickers == [] of
-		false ->
-			{noreply, NewState};
-		true ->
-			common_methods:print(?MODULE, "Finished"),
-			io:format("Finished~n"),
-			{noreply, #state{}}
-	end.
+
+handle_info({'EXIT', _Pid, {normal, Ticker}}, State) ->	
+	NewState = create_newstate(State, Ticker, normal),
+	parse_or_pause(NewState).
 
 
 %% terminate/2
 %% ====================================================================
-terminate(Reason, State) ->
+terminate(_Reason, _State) ->
 	ok.
 
 
 %% code_change/3
 %% ====================================================================
-code_change(OldVsn, State, Extra) ->
+code_change(_OldVsn, State, _Extra) ->
 	{ok, State}.
 
 
@@ -116,31 +103,62 @@ code_change(OldVsn, State, Extra) ->
 %% Internal functions
 %% ====================================================================
 
-start_up(D) ->
-	case is_tuple(D) of
-		true ->
-			{Old, Recent} = D,
-			Dates = convert_dates(Old, Recent);
+create_newstate(State, Ticker_To_Remove, segment_done) ->
+	#state{con_count = ?AMOUNT_OF_C_PROC - 1, 
+		dates = State#state.dates,  
+		tickers = State#state.tickers -- [Ticker_To_Remove]};
+
+create_newstate(State, Ticker_To_Remove, normal) ->
+	#state{con_count = State#state.con_count - 1, 
+		dates = State#state.dates,  
+		tickers = State#state.tickers -- [Ticker_To_Remove]}.
+
+parse_or_pause(State) ->
+	case State#state.tickers == [] of
 		false ->
-			Dates = convert_dates(default)
-	end,
+			{noreply, State};
+		true ->
+			common_methods:print(?MODULE, "Finished"),
+			{noreply, #state{}}
+	end.
+
+start_up(D) ->
+	Dates = eval_dates(D),
 	inets:start(),
+	odbc:start(),
 	process_flag(trap_exit, true),
 	common_methods:print(?MODULE, "Reading tickers..."),
 	Tickers = common_methods:read_existing_file(),
-	{A, _} = lists:split(202, Tickers),
-	{Segment, _Rest} = lists:split(?AMOUNT_OF_C_PROC, Tickers),
-	spawn_workers(Segment, Dates),
+	split_and_spawn(Tickers, Dates),
 	{Tickers, Dates}.
 
-spawn_workers([One_Ticker|Rest], Dates) ->
+eval_dates(D) ->
+	case is_tuple(D) of
+		true ->
+			{Old, Recent} = D,
+			_Dates = convert_dates(Old, Recent);
+		false ->
+			_Dates = convert_dates(default)
+	end.
+
+split_and_spawn(Tickers, Dates) ->
+	try
+		{Segment, _Rest} = lists:split(?AMOUNT_OF_C_PROC, Tickers),
+		iterate_and_spawn(Segment, Dates)
+	catch
+		error:_Could_Not_Split ->
+			iterate_and_spawn(Tickers, Dates)
+	end.
+
+
+iterate_and_spawn([One_Ticker|Rest], Dates) ->
 	spawn_link(hist_worker, process_ticker, [One_Ticker, Dates, 0]),
-	spawn_workers(Rest, Dates);
-spawn_workers([], _Dates) ->
+	iterate_and_spawn(Rest, Dates);
+iterate_and_spawn([], _Dates) ->
 	ok.
 
 restart_worker(Ticker, Dates, N) ->
-	case N == ?NUM_OF_RESTARTS of
+	case N == ?Amount_Of_Restarts of
 		true ->
 			common_methods:print(?MODULE, "This ticker reached max amount of restarts: ", Ticker),
 			?MODULE ! {'EXIT', restart_pid, {normal, Ticker}};
@@ -190,7 +208,8 @@ date_helper(Date) ->
 	Month = list_to_integer(Month_String),
 	Day = list_to_integer(Day_String),
 	case calendar:valid_date(Year, Month, Day) of
-		false -> throw("Invalid dates");
+		false -> 
+			throw("Invalid dates");
 		true -> 
 			Return_Year = integer_to_list(Year),
 			Return_Day = integer_to_list(Day),
