@@ -25,17 +25,17 @@ process_ticker(Ticker, Dates, Restarts) ->
 			exit({badmatch, Ticker, Restarts});
 		error:{badmatch,{error,timeout}} ->
 			io:format("Timed out, ticker:~p~n", [Ticker]),
-			exit({badmatch, Ticker, Restarts})
-	%% 		error:Catch_all -> 
-	%% 			io:format("~nIn ex, catch_all, Msg: ~p~n", [Catch_all]),
-	%% 			throw("Dani look here : " ++ Ticker),
-	%% 			exit({catch_all, Catch_all})
+			exit({badmatch, Ticker, Restarts});
+		error:Catch_all -> 
+			io:format("~nIn ex, catch_all, Msg: ~p~n", [Catch_all]),
+			throw("Dani look here : " ++ Ticker),
+			exit({catch_all, Catch_all})
 	end.
 
 download_data(URL) ->
 	{ok, {_,_,CSV}} = httpc:request(get, {URL, []}, 
-					[{connect_timeout, ?Url_Connect_Timeout}, 
-					 {timeout, ?Url_Connection_Alive_Timeout}], []),
+									[{connect_timeout, ?Url_Connect_Timeout}, 
+									 {timeout, ?Url_Connection_Alive_Timeout}], []),
 	CSV.
 
 create_url(Ticker, Dates) ->
@@ -48,16 +48,18 @@ create_url(Ticker, Dates) ->
 %% 	Checks if the csv is valid, if it contains an exclamation mark (!), 
 %% 	it's a website. It's a work around, but it works.
 validate_csv(CSV, Ticker) ->
-	case (string:chr(CSV, $!) > 0) of 
+	{First_Sentence_of_CSV, _} = lists:split(14, CSV),
+	case First_Sentence_of_CSV == "<!doctype html" of 
 		false ->	
-			process_and_upload({CSV}, Ticker);
+			%% 			It's not a page not found site
+			process_and_upload(CSV, Ticker);
 		true -> 
 			common_methods:print(?MODULE, "Yahoo says ticker not found: ", Ticker)
 	end.
 
 
 process_and_upload(CSV, Ticker) ->
-	[_|Relevant_Info] = re:split(tuple_to_list(CSV), "\n",
+	[_|Relevant_Info] = re:split(CSV, "\n",
 								 [{return,list},{parts,infinity}]),
 	{ok, Pid} = odbc:connect(?ConnectStr,[{timeout, ?Database_Connection_Timeout}]),
 	iterate_records(Relevant_Info, [], Ticker, Pid),

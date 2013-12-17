@@ -25,7 +25,6 @@ process_ticker(Ticker, Restarts) ->
 			io:format("Timed out, ticker:~p~n", [Ticker]),
 			exit({badmatch, Ticker, Restarts});
 		error:Catch_all -> 
-			io:format("~nIn ex, catch_all, Msg: ~p~n", [Catch_all]),
 			exit({catch_all, Catch_all})
 	end.
 

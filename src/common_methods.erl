@@ -1,6 +1,9 @@
 -module(common_methods).
 -compile(export_all).
 
+test() ->
+	read_existing_file().
+
 
 read_existing_file() ->
 	case filelib:is_file("tickers.txt") of
@@ -13,9 +16,11 @@ read_existing_file() ->
 
 
 parse_binary(Binary) ->
-	String = re:replace(Binary, "\\[|]|'|\\s|\\n| |\\.|", "", [global, {return, list}]),
-	List = string:tokens(String, ","),
-	List.
+	String = re:replace(Binary, "\\[|]|'|\\s|\\n| |\\.|\\\"|\\^+.|~", "", [global, {return, list}]),
+	DuplicateList = string:tokens(String, ","),
+	UniqueList = lists:usort(DuplicateList),
+	UniqueList.
+
 
 print(Module, Msg) ->
 	case Module of

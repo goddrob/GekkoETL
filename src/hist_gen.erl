@@ -129,6 +129,8 @@ start_up(D) ->
 	process_flag(trap_exit, true),
 	common_methods:print(?MODULE, "Reading tickers..."),
 	Tickers = common_methods:read_existing_file(),
+%% 	io:format("~p~n", [length(Tickers)]),
+%% 	{A, _} = lists:split(1, Tickers),
 	split_and_spawn(Tickers, Dates),
 	{Tickers, Dates}.
 

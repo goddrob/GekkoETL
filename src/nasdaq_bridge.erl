@@ -12,18 +12,12 @@ start(Time) ->
 	supervisor_bridge:start_link({local, ?MODULE}, ?MODULE, [Time]).
 
 
-
-%% ====================================================================
-%% Behavioural functions 
-%% ====================================================================
--record(state, {}).
-
 %% init/1 
 %% ====================================================================
 init(Time) ->
     case nasdaqTickers:start(Time) of
 	{ok, Pid} ->
-	    {ok, Pid, #state{}};
+	    {ok, Pid, stateless};
 	Error ->
 	    Error
     end.

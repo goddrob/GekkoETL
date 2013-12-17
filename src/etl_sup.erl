@@ -44,6 +44,7 @@ init([]) ->
 	     		permanent,brutal_kill,worker,[hist_worker]},
 	Error_Logging = {error_logging,{error_logging, start, []},
 	      permanent,2000,worker,[]},
+	
     {ok,{{one_for_one,0,1}, [Error_Logging, Nasdaq, News, Historical, Database, Daily]}}.
 
 %% ====================================================================

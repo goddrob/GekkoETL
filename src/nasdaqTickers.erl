@@ -1,6 +1,6 @@
 
 -module(nasdaqTickers).
--export([start/1, read/0, getServer/1,get_tickers/0,filteredValues/3,deleteSymbols/1]).
+-export([start/1, read/0, getServer/1,get_tickers/0,filteredValues/3]).
 -compile(export_all).
 
 -define(TIMEOUT, 10000).
@@ -14,13 +14,14 @@ read() ->
 	try
 		inets:start(),
 		Tickers = get_tickers(),
+		io:format("Amount of tickers: ~p~n", [length(Tickers)]),
 		io:format("[NasdaqTickers] - Read and wrote tickers~n"),
 		file:write_file("tickers.txt", io_lib:fwrite("~p.\n", [Tickers]))
 	catch
 	_:_ ->
 		throw("Cannot read tickers online")
 	end.
-
+%% 6400
 getServer(Quary) ->
 		{ok, {_,_,Body}} = httpc:request(get, {Quary, []}, [{timeout, ?TIMEOUT}], []),
         {Body}.
@@ -39,20 +40,21 @@ get_tickers()->
 		convert_to_atoms(F).
         
 filteredValues([],Acc,_)->
-        Value2 = deleteSymbols(Acc),
-        Value2;
+%%         Value2 = deleteSymbols(Acc),
+        Acc;
+
         
 filteredValues([H|T],Acc,Counter) when Counter == 8 ->
                 filteredValues(T,[H]++Acc,0);
         filteredValues([_|T],Acc,Counter) ->
                 filteredValues(T,Acc,Counter+1).
 
-deleteSymbols([]) -> [];
-deleteSymbols([H|T]) ->
-        case (string:chr(H, $\") == 0) and (string:chr(H, $^) == 0) and (string:chr(H, $/) == 0) of %"
-                false -> deleteSymbols(T);
-                true -> [H|deleteSymbols(T)]
-        end.
+%% deleteSymbols([]) -> [];
+%% deleteSymbols([H|T]) ->
+%%         case (string:chr(H, $\") == 0) and (string:chr(H, $^) == 0) and (string:chr(H, $/) == 0) of %"
+%%                 false -> deleteSymbols(T);
+%%                 true -> [H|deleteSymbols(T)]
+%%         end.
 
 convert_to_atoms(List) -> 
 	convert_to_atoms(List, []).
