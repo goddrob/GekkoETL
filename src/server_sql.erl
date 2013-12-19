@@ -11,7 +11,7 @@
 -include("../include/defs.hrl").
 -behaviour(gen_server).
 
--export([start_link/0, call_daily/1, call_hist/1, call_news/1, stop/0]).
+-export([start_link/0, call_daily/1, stop/0]).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -53,7 +53,7 @@ handle_cast({daily,RecList}, State) ->
 	{ok,Pid} = odbc:connect(?ConnectStr,[]),
 	odbc:sql_query(Pid,Query),
 	odbc:disconnect(Pid),
-   {noreply, State};
+   {noreply, State}.
   
   
   
@@ -72,4 +72,4 @@ gen_query(Type,List) -> gen_query(Type,List,"").
 gen_query(_,[],Query) -> Query;
 gen_query(Type,[H|T],Query) -> gen_query(Type,T,Query++gen_entry(Type,H)++";").
 
-gen_entry(daily,R) -> lists:flatten(io_lib:format("EXEC s_addDaily @Name='"++R#dailyStock.name++"',@Symbol='"++R#dailyStock.symbol++"',@Datetime='"++R#dailyStock.date++"',@CurrentPrice=~p,@ChangeValue=~p,@ChangePercent=~p,@PreviousClose=~p,@Open=~p,@DayMaxPrice=~p,@DayMinPrice=~p,@Volume=~p",[R#dailyStock.currPrice,R#dailyStock.changeValue,R#dailyStock.changePercent,R#dailyStock.prevClose,R#dailyStock.open,R#dailyStock.high,R#dailyStock.low,R#dailyStock.volume]));
+gen_entry(daily,R) -> lists:flatten(io_lib:format("EXEC s_addDaily @Name='"++R#dailyStock.name++"',@Symbol='"++R#dailyStock.symbol++"',@Datetime='"++R#dailyStock.date++"',@CurrentPrice=~p,@ChangeValue=~p,@ChangePercent=~p,@PreviousClose=~p,@Open=~p,@DayMaxPrice=~p,@DayMinPrice=~p,@Volume=~p",[R#dailyStock.currPrice,R#dailyStock.changeValue,R#dailyStock.changePercent,R#dailyStock.prevClose,R#dailyStock.open,R#dailyStock.high,R#dailyStock.low,R#dailyStock.volume])).
