@@ -43,7 +43,7 @@ getServer(Quary) ->
 	{Body}.
 
 %% @Author: Sinan
-%% Receiving the url's body and save it in Data
+%% Receiving the csv's body and save it in Data
 %% replace and split using the regular expressions module
 get_tickers()-> 
 	Data = getServer("http://www.nasdaq.com/screening/companies-by-name.aspx?&render=download"),
@@ -56,7 +56,7 @@ get_tickers()->
 	
 	F = filteredValues(T,[H],0),
 	convert_to_atoms(F).
-
+%%Filtering out the unwanted data from the csv file
 filteredValues([],Acc,_)->
 	%%         Value2 = deleteSymbols(Acc),
 	Acc;
