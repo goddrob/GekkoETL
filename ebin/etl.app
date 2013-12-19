@@ -1,0 +1,11 @@
+{application,etl,
+             [{description,"Gekko stock market application"},
+              {vsn,"1"},
+              {modules,[common_methods,ec_date,etl_app,etl_sup,hist_gen,
+                        hist_worker,nasdaqTickers,nasdaq_bridge,news_gen,
+                        news_worker,server_daily,server_sql]},
+              {registered,[etl_sup,hist_gen,news_gen,nasdaq_bridge,
+                           serverDaily,serverSQL]},
+              {applications,[kernel,odbc,inets,stdlib]},
+              {mod,{etl_app,[]}},
+              {env,[]}]}.

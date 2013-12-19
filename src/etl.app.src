@@ -19,7 +19,7 @@
 	hist_gen,
 	news_gen,
 	nasdaq_bridge,
-	serverDaily
+	serverDaily,
 	serverSQL
 	]},
   {applications, [
