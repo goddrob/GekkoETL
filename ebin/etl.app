@@ -6,6 +6,6 @@
                         news_worker,server_daily,server_sql]},
               {registered,[etl_sup,hist_gen,news_gen,nasdaq_bridge,
                            serverDaily,serverSQL]},
-              {applications,[kernel,odbc,inets,stdlib]},
+              {applications,[kernel,stdlib]},
               {mod,{etl_app,[]}},
               {env,[]}]}.

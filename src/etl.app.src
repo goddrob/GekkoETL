@@ -24,8 +24,6 @@
 	]},
   {applications, [
                   kernel,
-                  odbc,
-                  inets,
                   stdlib
                  ]},
   {mod, { etl_app, []}},
