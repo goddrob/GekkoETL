@@ -8,6 +8,7 @@
 
 -module(parser).
 -compile(export_all).
+-include_lib("eunit/include/eunit.hrl").
 
 parse(FilePath,ForEachLine,Opaque)->
     case file:open(FilePath,[read]) of
