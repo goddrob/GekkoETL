@@ -37,11 +37,14 @@ read() ->
 	end.
 
 %% @Author: Sinan
+%% get the body from the url
 getServer(Quary) ->
 	{ok, {_,_,Body}} = httpc:request(Quary),
 	{Body}.
 
 %% @Author: Sinan
+%% Receiving the url's body and save it in Data
+%% replace and split using the regular expressions module
 get_tickers()-> 
 	Data = getServer("http://www.nasdaq.com/screening/companies-by-name.aspx?&render=download"),
 	
