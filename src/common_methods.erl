@@ -1,9 +1,17 @@
+%% @Author: Dani Hodovic
+%% ====================================================================
+%% Description: 
+%% A general purpose library for methods shared between 
+%% multiple modules
+%% ====================================================================
+
 -module(common_methods).
--compile(export_all).
+-export([read_existing_file/0, print/2, print/3]).
 
-test() ->
-	read_existing_file().
 
+%% read_existing_file/0
+%% ====================================================================
+%% Reads the tickers and calls parse_binary if the file exists
 
 read_existing_file() ->
 	case filelib:is_file("tickers.txt") of
@@ -14,6 +22,9 @@ read_existing_file() ->
 			throw("Tickers.txt not found")
 	end.
 
+%% parse_binary/1
+%% ====================================================================
+%% Parses the binary file, removes duplicate tickers and returns a unique list
 
 parse_binary(Binary) ->
 	String = re:replace(Binary, "\\[|]|'|\\s|\\n| |\\.|\\\"|\\^+.|~", "", [global, {return, list}]),
@@ -21,6 +32,11 @@ parse_binary(Binary) ->
 	UniqueList = lists:usort(DuplicateList),
 	UniqueList.
 
+%% print/2
+%% ====================================================================
+%% Reads the module and the msg, and prints differently
+%% depending on who the caller was. This method was made to save 
+%% me time, by avoiding to write io:format/2 over and over again
 
 print(Module, Msg) ->
 	case Module of
@@ -38,6 +54,10 @@ print(Module, Msg) ->
 			io:format("[Nasdaq] - ")
 	end,
 	io:format("~s~n", [Msg]).
+
+%% print/3
+%% ====================================================================
+%% This time with an additional parameter
 
 print(Module, Msg, Param) ->
 	case Module of

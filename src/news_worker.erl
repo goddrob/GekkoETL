@@ -1,9 +1,18 @@
-
+%% @Author: Georgi Dungarov
+%% ====================================================================
+%% Description: 
+%% The supervisor responsible for spawning and maintaining
+%% all of it's children alive
+%% ====================================================================
 -module(news_worker).
 -compile(export_all).
 -include_lib("xmerl/include/xmerl.hrl").
 -include("../include/defs.hrl").
 
+%% Author: Dani
+%% Generates an URL and downloads the XML from the URL. 
+%% If errors occurr the process exits in a way that is 
+%% caught by the parent process
 process_ticker(Ticker, Restarts) ->
 	inets:start(),
 	odbc:start(),
@@ -11,8 +20,9 @@ process_ticker(Ticker, Restarts) ->
 		URL = "http://articlefeeds.nasdaq.com/nasdaq/symbols?symbol=" 
 							++ string:to_upper(Ticker),
 		Body = download_data(URL),
-		{ Xml, _Rest } = xmerl_scan:string(Body),
+		{Xml, _Rest } = xmerl_scan:string(Body),
 		printItems(getElements(Xml), Ticker),
+		common_methods:print(?MODULE, "Processed ticker: ", Ticker),
 		exit({normal, Ticker})
 	catch
 		error:{badmatch,{error,socket_closed_remotely}} -> 
@@ -25,7 +35,7 @@ process_ticker(Ticker, Restarts) ->
 			io:format("Timed out, ticker:~p~n", [Ticker]),
 			exit({badmatch, Ticker, Restarts});
 		error:Catch_all -> 
-			exit({catch_all, Catch_all})
+			exit({catch_all, {Catch_all, Ticker}})
 	end.
 
 download_data(URL) ->
@@ -76,6 +86,7 @@ filter_headline(Var) ->
 	NewList = delete(Var, []),
 	re:replace(NewList, "&#39;", "", [global, {return, list}]).
 
+%% Deletes characters that aren't parsable /Dani
 delete([H|T], Acc) when H > 127 ->
 	delete(T, Acc);
 delete([H|T], Acc) ->
@@ -83,6 +94,8 @@ delete([H|T], Acc) ->
 delete([], Acc) -> 
 	Acc.
 
+%% Uses the date library to split the string and 
+%% parse it with the help of ec_date:parse/1  /Dani
 format_date(Var) ->
 	{A, _} = lists:split(16, Var),
 	{{Y, M, D}, _} = ec_date:parse(A),
@@ -91,5 +104,5 @@ format_date(Var) ->
 			   ++ integer_to_list(D),
 	Date.
 
-% Code below by Robert Petre
+%% @Author: Robert
 gen_entry(news,R) -> "EXEC s_addNews @Date='"++R#news.date++"',@Symbol='"++R#news.ticker++"',@Headline='"++R#news.headline++"',@Hyperlink='"++R#news.url++"'".

@@ -1,3 +1,9 @@
+%% @Author: Dani Hodovic
+%% ====================================================================
+%% Description: 
+%% The app file responsible for starting the supervisor
+%% ====================================================================
+
 -module(etl_app).
 
 -behaviour(application).
