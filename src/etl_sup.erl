@@ -43,7 +43,7 @@ init([]) ->
 	      permanent,2000,worker,[news_worker]},
 	
 	Historical = {historical,
-			{hist_gen, start, [{"20131201", "20131203"}, timer:hours(6)]},
+			{hist_gen, start, [{"19701201", "20131203"}, timer:hours(6)]},
 	     		permanent,brutal_kill,worker,[hist_worker]},
 	
     {ok,{{one_for_one,0,1}, [Nasdaq, News, Historical, Database, Daily]}}.
